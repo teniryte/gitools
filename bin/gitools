@@ -1,0 +1,173 @@
+#!/usr/bin/env node
+// @ts-nocheck
+'use strict';
+
+const gitools = require('../lib');
+const path = require('path');
+const colors = require('colors');
+const childProcess = require('child_process');
+
+const command = process.argv[2];
+const pack = require('../package.json');
+
+if (command === undefined) {
+  console.log(
+    `
+  ${`gitools v${pack.version}`.cyan}
+  ${`GIT Command Line Tools.`.grey}
+
+  ${`COMMANDS`.bold}
+
+    ${`Find repositories`.bold}
+
+      ${`$`.green} ${`gitools`.grey} find ${
+      `[directories-to-find]`.grey.italic
+    };
+
+    ${`Show origins`.bold}
+
+      ${`$`.green} ${`gitools`.grey} origins ${
+      `[directories-to-find]`.grey.italic
+    };
+
+    ${`Show statuses`.bold}
+
+      ${`$`.green} ${`gitools`.grey} statuses ${
+      `[directories-to-find]`.grey.italic
+    };
+
+    ${`Show statistics`.bold}
+
+      ${`$`.green} ${`gitools`.grey} stats ${
+      `[directories-to-find]`.grey.italic
+    };
+
+    ${`Change origin host of all found repositories`.bold}
+
+      ${`$`.green} ${`gitools`.grey} change-origin-host <from-host> <to-host> ${
+      `[directories-to-find]`.grey.italic
+    };
+
+    ${`Commit, push and publish`.bold}
+
+      ${`$`.green} ${`gitools`.grey} publish ${
+      `[directories-to-find]`.grey.italic
+    };
+
+`
+  );
+}
+
+if (command === 'change-origin-host') {
+  changeOriginHost(
+    process.argv[3],
+    process.argv[4],
+    process.argv.slice(5).map(dir => path.resolve(process.cwd(), dir))
+  );
+}
+
+if (command === 'find') {
+  findRepositories(
+    process.argv.slice(3).map(dir => path.resolve(process.cwd(), dir))
+  );
+}
+
+if (command === 'origins') {
+  showOrigins(
+    process.argv.slice(3).map(dir => path.resolve(process.cwd(), dir))
+  );
+}
+
+if (command === 'statuses' || command === 'status') {
+  showStatuses(
+    process.argv.slice(3).map(dir => path.resolve(process.cwd(), dir))
+  )
+    .then(() => console.log(''))
+    .catch(err => console.log('ERROR', err));
+}
+
+if (command === 'stats') {
+  showStats(process.argv.slice(3).map(dir => path.resolve(process.cwd(), dir)))
+    .then(() => console.log(''))
+    .catch(err => console.log('ERROR', err));
+}
+
+if (command === 'publish') {
+  publish(process.argv.slice(3).map(dir => path.resolve(process.cwd(), dir)));
+}
+
+function publish(dirs = []) {
+  if (!dirs.length) dirs = [process.cwd()];
+  gitools
+    .findRepos(...dirs)
+    .map(dir => new gitools.Repository(dir))
+    .forEach(repo => repo.push());
+}
+
+async function showStats(dirs = []) {
+  if (!dirs.length) dirs = [process.cwd()];
+  let repos = gitools
+    .findRepos(...dirs)
+    .map(dir => new gitools.Repository(dir));
+  for (let i = 0; i < repos.length; i++) {
+    let repo = repos[i],
+      stats = await repo.getStats();
+    console.log(
+      `
+${repo.dir.green.bold}:
+  ${'Branch:'} ${stats.branch.toString().cyan}
+  ${'Not added to commit:'} ${stats.modified.length.toString().yellow.bold} / ${
+        stats.created.length.toString().green.bold
+      } / ${stats.deleted.length.toString().red.bold}
+  ${'Added to commit:'} ${
+        stats.added.modified.length.toString().yellow.bold
+      } / ${stats.added.created.length.toString().green.bold} / ${
+        stats.added.deleted.length.toString().red.bold
+      }`
+    );
+  }
+}
+
+async function showStatuses(dirs = []) {
+  if (!dirs.length) dirs = [process.cwd()];
+  let repos = gitools
+    .findRepos(...dirs)
+    .map(dir => new gitools.Repository(dir));
+  for (let i = 0; i < repos.length; i++) {
+    let repo = repos[i];
+    console.log(`\n${repo.dir.green.bold}:\n`);
+    childProcess.spawnSync('git', ['status'], {
+      cwd: repo.dir,
+      stdio: 'inherit',
+    });
+  }
+}
+
+function showOrigins(dirs = []) {
+  if (!dirs.length) dirs = [process.cwd()];
+  gitools
+    .findRepos(...dirs)
+    .map(dir => new gitools.Repository(dir))
+    .forEach(repo =>
+      console.log(`${repo.dir.green.bold}:\n  ${repo.getOrigin().grey}\n`)
+    );
+}
+
+function findRepositories (dirs = []) {
+  if (!dirs.length) dirs = [process.cwd()];
+  gitools
+    .findRepos(...dirs)
+    .forEach(dir => console.log(dir));
+}
+
+function changeOriginHost (from, to, dirs = []) {
+  if (!from || typeof from !== 'string')
+    return console.log(`Original host must be string!`);
+  if (!to || typeof to !== 'string')
+    return console.log(`Target host must be string!`);
+  if (!dirs.length) dirs = [process.cwd()];
+  gitools
+    .findRepos(...dirs)
+    .map(dir => new gitools.Repository(dir))
+    .map(repo => repo.changeOriginHost(from, to));
+}

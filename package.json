@@ -1,0 +1,39 @@
+{
+  "name": "gitools",
+  "version": "0.0.27",
+  "main": "./lib/index.js",
+  "description": "GIT Tools",
+  "keywords": [
+    "git",
+    "tools"
+  ],
+  "homepage": "https://senc.tech/sen-tools/gitools",
+  "license": "MIT",
+  "dependencies": {
+    "colors": "^1.4.0",
+    "ooi": "^0.1.62",
+    "parse-git-config": "^3.0.0"
+  },
+  "devDependencies": {
+    "jest": "^26.6.3"
+  },
+  "scripts": {
+    "test": "node ./node_modules/.bin/jest"
+  },
+  "author": {
+    "name": "teniryte",
+    "email": "teniryte@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@senc.tech:sen-tools/gitools.git"
+  },
+  "publish": true,
+  "upgrade": true,
+  "publishConfig": {
+    "registry": "http://registry.npmjs.org/"
+  },
+  "bin": {
+    "gitools": "./bin/gitools"
+  }
+}
